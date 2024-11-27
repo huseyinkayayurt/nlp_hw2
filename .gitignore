@@ -74,3 +74,7 @@ env/
 # Project specific files
 local_models/
 graphs/
+data_set/
+nlp_hw2_results/
+visualizations/
+convert.py

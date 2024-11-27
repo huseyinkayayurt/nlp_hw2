@@ -1,42 +1,60 @@
-from data_loader import load_and_split_dataset
-from llm_evaluation import evaluate_llm,load_llm_model,evaluate_llm_optimized
-from visulation import save_graph
-import time
+from data_loader import load_data_from_csv
+import random
+import re
+from llm_evaluation import evaluate_llm
 
 
 def main():
-    print("Veri setleri yükleniyor ve ayrılıyor...\n")
+    trsav1_file_path = "data_set/TRSAv1.csv"
+    ttc4900_file_path = "data_set/ttc4900.csv"
 
-    # Veri setlerini yükle ve ayır
-    ttc4900_train, ttc4900_test = load_and_split_dataset("savasy/ttc4900", sample_size=None)
-    trsav1_train, trsav1_test = load_and_split_dataset("maydogan/TRSAv1", sample_size=5000)
+    data_set_trsav1 = load_data_from_csv(trsav1_file_path, "review", "score")
+    data_set_ttc4900 = load_data_from_csv(ttc4900_file_path, "text", "category")
 
-    print(f"TTC4900 - Eğitim Seti Boyutu: {len(ttc4900_train)}, Test Seti Boyutu: {len(ttc4900_test)}\n")
-    print(f"TRSAv1 - Eğitim Seti Boyutu: {len(trsav1_train)}, Test Seti Boyutu: {len(trsav1_test)}\n")
+    indices = random.sample(range(len(data_set_trsav1)), 50)
+    selected_trsav1 = [data_set_trsav1[i] for i in indices]
+    for item in selected_trsav1:
+        item['review'] = re.sub(r'[^\w\s.,!?]', '', item['review'])
 
-    # LLM modelini kullanarak performans ölçümü
-    model_name = "./local_models/kanarya-750m"
-    model_name = "asafaya/kanarya-750m"
-    tokenizer,model=load_llm_model(model_name)
-    results_kanarya_ttc4900 = evaluate_llm_optimized(model,tokenizer, ttc4900_train, ttc4900_test,"text","category", shots=[0, 7, 14])
-    save_graph(results_kanarya_ttc4900, "ttc4900_kanarya-750m")
-    # Sonuçları yazdır
-    for shot, accuracy in results_kanarya_ttc4900.items():
-        print(f"{shot}-shot Accuracy: {accuracy:.2f}")
+    indices = random.sample(range(len(data_set_ttc4900)), 50)
+    selected_ttc4900 = [data_set_ttc4900[i] for i in indices]
+    for item in selected_ttc4900:
+        item['text'] = re.sub(r'[^\w\s.,!?]', '', item['text'])
+        item['text'] = item['text'].strip()
 
+    train_dataset_trsav1 = selected_trsav1[:40]
+    test_dataset_trsav1 = selected_trsav1[40:]
 
-    # results_kanarya_trsav1 = evaluate_llm(model,tokenizer, trsav1_train, trsav1_test,"review","score", shots=[0, 3, 6])
-    # save_graph(results_kanarya_trsav1, "trsav1_kanarya-750m")
-    # # Sonuçları yazdır
-    # for shot, accuracy in results_kanarya_trsav1.items():
-    #     print(f"{shot}-shot Accuracy: {accuracy:.2f}")
+    train_dataset_ttc4900 = selected_ttc4900[:40]
+    test_dataset_ttc4900 = selected_ttc4900[40:]
+
+    llm_models = [
+        "local_models/kanarya-750m",
+        "local_models/llama3-8b-tr",
+        "local_models/OpenHermes-2.5-Mistral-7B",
+    ]
+
+    for model in llm_models:
+        results = evaluate_llm(
+            model_name=model,
+            train_dataset=train_dataset_ttc4900,
+            test_dataset=test_dataset_ttc4900,
+            text_key="text",
+            category_key="category",
+            shots_list=[0, 7, 14]
+        )
+        print("Sonuçlar:", results)
+
+        results = evaluate_llm(
+            model_name=model,
+            train_dataset=train_dataset_trsav1,
+            test_dataset=test_dataset_trsav1,
+            text_key="review",
+            category_key="score",
+            shots_list=[0, 3, 6]
+        )
+        print("Sonuçlar:", results)
+
 
 if __name__ == "__main__":
-    start_time = time.time()  # Başlangıç zamanı
     main()
-    # Çalışma süresi hesapla
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    hours, rem = divmod(elapsed_time, 3600)
-    minutes, seconds = divmod(rem, 60)
-    print(f"Toplam çalışma süresi: {int(hours)} saat, {int(minutes)} dakika, {seconds:.2f} saniye")
