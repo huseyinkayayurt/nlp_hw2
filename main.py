@@ -1,59 +1,56 @@
-from data_loader import load_data_from_csv
-import random
-import re
+from data_loader import load_and_prepare_data
 from llm_evaluation import evaluate_llm
+from visualizer import plot_results
 
 
 def main():
-    trsav1_file_path = "data_set/TRSAv1.csv"
-    ttc4900_file_path = "data_set/ttc4900.csv"
+    # Veri setlerini yükle ve hazırla
+    trsav1_train, trsav1_test = load_and_prepare_data(
+        file_path="data_set/TRSAv1.csv",
+        text_key="review",
+        category_key="score",
+        sample_size=50
+    )
+    ttc4900_train, ttc4900_test = load_and_prepare_data(
+        file_path="data_set/ttc4900.csv",
+        text_key="text",
+        category_key="category",
+        sample_size=50
+    )
 
-    data_set_trsav1 = load_data_from_csv(trsav1_file_path, "review", "score")
-    data_set_ttc4900 = load_data_from_csv(ttc4900_file_path, "text", "category")
-
-    indices = random.sample(range(len(data_set_trsav1)), 50)
-    selected_trsav1 = [data_set_trsav1[i] for i in indices]
-    for item in selected_trsav1:
-        item['review'] = re.sub(r'[^\w\s.,!?]', '', item['review'])
-
-    indices = random.sample(range(len(data_set_ttc4900)), 50)
-    selected_ttc4900 = [data_set_ttc4900[i] for i in indices]
-    for item in selected_ttc4900:
-        item['text'] = re.sub(r'[^\w\s.,!?]', '', item['text'])
-        item['text'] = item['text'].strip()
-
-    train_dataset_trsav1 = selected_trsav1[:40]
-    test_dataset_trsav1 = selected_trsav1[40:]
-
-    train_dataset_ttc4900 = selected_ttc4900[:40]
-    test_dataset_ttc4900 = selected_ttc4900[40:]
-
+    # Değerlendirilecek modeller
     llm_models = [
         "local_models/kanarya-750m",
         "local_models/llama3-8b-tr",
         "local_models/OpenHermes-2.5-Mistral-7B",
     ]
-
+    # Modelleri değerlendir
     for model in llm_models:
-        results = evaluate_llm(
+        print(f"Model değerlendiriliyor: {model}")
+
+        # TTC4900 değerlendirmesi
+        ttc4900_results = evaluate_llm(
             model_name=model,
-            train_dataset=train_dataset_ttc4900,
-            test_dataset=test_dataset_ttc4900,
+            train_dataset=ttc4900_train,
+            test_dataset=ttc4900_test,
             text_key="text",
             category_key="category",
             shots_list=[0, 7, 14]
         )
-        print("Sonuçlar:", results)
+        print("TTC4900 Sonuçlar:", ttc4900_results)
+        plot_results(ttc4900_results, f"ttc4900_{model.split('/')[-1]}")
 
-        results = evaluate_llm(
+        # TRSAv1 değerlendirmesi
+        trsav1_results = evaluate_llm(
             model_name=model,
-            train_dataset=train_dataset_trsav1,
-            test_dataset=test_dataset_trsav1,
+            train_dataset=trsav1_train,
+            test_dataset=trsav1_test,
             text_key="review",
             category_key="score",
             shots_list=[0, 3, 6]
         )
-        print("Sonuçlar:", results)
+        print("TRSAv1 Sonuçlar:", trsav1_results)
+        plot_results(trsav1_results, f"trsav1_{model.split('/')[-1]}")
 
 
 if __name__ == "__main__":

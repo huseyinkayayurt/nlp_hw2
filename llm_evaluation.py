@@ -24,21 +24,10 @@ def prepare_few_shot_prompt(dataset, text, text_key, category_key, shots=0, max_
 
 def evaluate_llm(model_name, train_dataset, test_dataset, text_key, category_key, shots_list=None):
     """
-    Farklı veri setleri ve LLM modelleri için zero-shot ve few-shot değerlendirmesi yapar.
-
-    Args:
-        model_name (str): Modelin HuggingFace identifier'ı.
-        train_dataset (list): Eğitim veri seti.
-        test_dataset (list): Test veri seti.
-        text_key (str): Metin içeriğinin olduğu anahtar.
-        category_key (str): Kategorilerin olduğu anahtar.
-        shots_list (list): Kaç-shot değerlendirmesi yapılacağı.
-
-    Returns:
-        dict: Shot bazlı doğruluk oranları.
+    LLM modelini değerlendirir.
     """
     if shots_list is None:
-        shots_list = [0]  # Varsayılan olarak sadece zero-shot yapılır.
+        shots_list = [0]  # Varsayılan: Zero-shot
 
     # Model ve tokenizer yükleme
     print(f"Model yükleniyor: {model_name}")
@@ -51,34 +40,22 @@ def evaluate_llm(model_name, train_dataset, test_dataset, text_key, category_key
     for shots in shots_list:
         print(f"{shots}-shot değerlendirmesi başlıyor...")
         correct = 0
-
         for test_example in tqdm(test_dataset, desc=f"{shots}-shot değerlendirmesi"):
             text = test_example[text_key]
             true_category = test_example[category_key]
-
-            # Prompt hazırlama
             prompt = prepare_few_shot_prompt(train_dataset, text, text_key, category_key, shots)
-
-            # Tokenizer ile giriş verisi
             inputs = tokenizer(prompt, return_tensors="pt", truncation=True, padding=True, max_length=2048)
-
-            # Tahmin yapma
             outputs = model.generate(
-                input_ids=inputs['input_ids'],
-                attention_mask=inputs['attention_mask'],
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
                 max_new_tokens=50,
                 pad_token_id=tokenizer.pad_token_id,
                 eos_token_id=tokenizer.eos_token_id
             )
             predicted = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
-
-            # Tahmin doğruluğunu kontrol et
             if str(true_category).lower() in predicted.lower():
                 correct += 1
-
-        # Doğruluk oranını hesaplama
         accuracy = correct / len(test_dataset)
         results[f"{shots}-shot"] = accuracy
         print(f"{shots}-shot doğruluk oranı: {accuracy:.2f}\n")
-
     return results
