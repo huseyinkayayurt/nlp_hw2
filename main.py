@@ -1,6 +1,6 @@
 from data_loader import load_and_prepare_data
 from llm_evaluation import evaluate_llm
-from visualizer import plot_results
+from visualizer import plot_results_for_dataset
 
 
 def main():
@@ -9,27 +9,31 @@ def main():
         file_path="data_set/TRSAv1.csv",
         text_key="review",
         category_key="score",
-        sample_size=50
     )
     ttc4900_train, ttc4900_test = load_and_prepare_data(
         file_path="data_set/ttc4900.csv",
         text_key="text",
         category_key="category",
-        sample_size=50
+        sample_size=5000
     )
 
     # Değerlendirilecek modeller
     llm_models = [
-        "local_models/kanarya-750m",
+        "local_models/Turkish-Llama-8b-DPO-v0.1",
+        "local_models/VeriUS-LLM-8b-v0.2",
         "local_models/llama3-8b-tr",
-        "local_models/OpenHermes-2.5-Mistral-7B",
     ]
-    # Modelleri değerlendir
+
+    # Veri seti ve model sonuçları için sözlükler
+    trsav1_results = {}
+    ttc4900_results = {}
+
     for model in llm_models:
-        print(f"Model değerlendiriliyor: {model}")
+        model_name = model.split("/")[-1]
 
         # TTC4900 değerlendirmesi
-        ttc4900_results = evaluate_llm(
+        print(f"TTC4900 veri seti değerlendiriliyor: {model_name}")
+        ttc4900_results[model_name] = evaluate_llm(
             model_name=model,
             train_dataset=ttc4900_train,
             test_dataset=ttc4900_test,
@@ -37,11 +41,10 @@ def main():
             category_key="category",
             shots_list=[0, 7, 14]
         )
-        print("TTC4900 Sonuçlar:", ttc4900_results)
-        plot_results(ttc4900_results, f"ttc4900_{model.split('/')[-1]}")
 
         # TRSAv1 değerlendirmesi
-        trsav1_results = evaluate_llm(
+        print(f"TRSAv1 veri seti değerlendiriliyor: {model_name}")
+        trsav1_results[model_name] = evaluate_llm(
             model_name=model,
             train_dataset=trsav1_train,
             test_dataset=trsav1_test,
@@ -49,8 +52,12 @@ def main():
             category_key="score",
             shots_list=[0, 3, 6]
         )
-        print("TRSAv1 Sonuçlar:", trsav1_results)
-        plot_results(trsav1_results, f"trsav1_{model.split('/')[-1]}")
+
+    print(ttc4900_results)
+    print(trsav1_results)
+    # Grafik oluşturma
+    plot_results_for_dataset("TTC4900", ttc4900_results)
+    plot_results_for_dataset("TRSAv1", trsav1_results)
 
 
 if __name__ == "__main__":

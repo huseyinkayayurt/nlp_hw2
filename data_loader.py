@@ -1,57 +1,38 @@
-import pandas as pd
+import csv
 import random
-import re
 
 
-def load_data_from_csv(file_path, text_key, category_key):
+def load_and_prepare_data(file_path, text_key, category_key, sample_size=None):
     """
-    CSV dosyasını yükler ve dictionary formatında döndürür.
+    Veri setini yükler, gerekli temizlemeleri yapar ve isteğe bağlı olarak örneklem alır.
 
     Args:
-        file_path (str): CSV dosyasının yolu.
-        text_key (str): Metin içeriğinin olduğu sütun adı.
-        category_key (str): Kategori bilgilerinin olduğu sütun adı.
+        file_path (str): Veri setinin dosya yolu.
+        text_key (str): Metin alanının anahtarı.
+        category_key (str): Kategori alanının anahtarı.
+        sample_size (int, optional): Alınacak örneklem boyutu. None ise tüm veri seti alınır.
 
     Returns:
-        list[dict]: Veri seti elemanları.
+        tuple: Eğitim ve test veri setleri (train_dataset, test_dataset)
     """
-    data = pd.read_csv(file_path)
-    data = data[[text_key, category_key]].dropna()
-    return data.to_dict(orient="records")
+    dataset = []
 
+    # Veri setini yükle
+    with open(file_path, "r", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            dataset.append({
+                text_key: row[text_key].strip(),
+                category_key: row[category_key].strip()
+            })
 
-def clean_text_fields(dataset, text_key):
-    """
-    Metin alanlarını temizler: özel karakterleri kaldırır ve boşlukları kırpar.
+    # Eğer örneklem boyutu belirtilmişse rastgele örnek seç
+    if sample_size is not None and sample_size < len(dataset):
+        dataset = random.sample(dataset, sample_size)
 
-    Args:
-        dataset (list[dict]): Veri seti.
-        text_key (str): Temizlenecek metin alanının anahtarı.
+    # Veri setini %80 eğitim ve %20 test olarak ayır
+    split_index = int(len(dataset) * 0.8)
+    train_dataset = dataset[:split_index]
+    test_dataset = dataset[split_index:]
 
-    Returns:
-        list[dict]: Temizlenmiş veri seti.
-    """
-    for item in dataset:
-        item[text_key] = re.sub(r"[^\w\s.,!?]", "", item[text_key]).strip()
-    return dataset
-
-
-def load_and_prepare_data(file_path, text_key, category_key, sample_size):
-    """
-    Veriyi yükler, temizler ve eğitim/test için böler.
-
-    Args:
-        file_path (str): Veri dosyasının yolu.
-        text_key (str): Metin içeriği sütunu.
-        category_key (str): Kategori sütunu.
-        sample_size (int): Örnek veri boyutu.
-
-    Returns:
-        tuple: Eğitim ve test veri kümeleri.
-    """
-    dataset = load_data_from_csv(file_path, text_key, category_key)
-    dataset = clean_text_fields(dataset, text_key)
-    sampled_dataset = random.sample(dataset, sample_size)
-    train_data = sampled_dataset[:int(0.8 * sample_size)]
-    test_data = sampled_dataset[int(0.8 * sample_size):]
-    return train_data, test_data
+    return train_dataset, test_dataset
