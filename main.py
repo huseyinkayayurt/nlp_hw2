@@ -9,19 +9,25 @@ def main():
         file_path="data_set/TRSAv1.csv",
         text_key="review",
         category_key="score",
+        sample_size=5000
     )
     ttc4900_train, ttc4900_test = load_and_prepare_data(
         file_path="data_set/ttc4900.csv",
         text_key="text",
         category_key="category",
-        sample_size=5000
+
     )
 
     # Değerlendirilecek modeller
+    # llm_models = [
+    #     "local_models/Turkish-Llama-8b-DPO-v0.1",
+    #     "local_models/VeriUS-LLM-8b-v0.2",
+    #     "local_models/llama3-8b-tr",
+    # ]
     llm_models = [
-        "local_models/Turkish-Llama-8b-DPO-v0.1",
-        "local_models/VeriUS-LLM-8b-v0.2",
-        "local_models/llama3-8b-tr",
+        "local_models/new/kanarya-750m",
+        "local_models/new/Phi-3-mini-4k-instruct",
+        "local_models/new/turkish-gpt2-lage",
     ]
 
     # Veri seti ve model sonuçları için sözlükler

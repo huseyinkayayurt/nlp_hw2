@@ -13,12 +13,12 @@ def prepare_few_shot_prompt(dataset, text, text_key, category_key, shots=0, max_
     if shots > 0:
         sampled_examples = random.sample(list(dataset), shots)
         for example in sampled_examples:
-            example_text = f"Metin: {example[text_key]}\nKategori: {example[category_key]}\n\n"
+            example_text = f"Metin: {example[text_key][:500]}\nKategori: {example[category_key]}\n\n"
             if len(task_description) + len(examples) + len(example_text) <= max_prompt_length:
                 examples += example_text
             else:
                 break
-    test_prompt = f"Test metni:\nMetin: {text}\nKategori:"
+    test_prompt = f"Test metni:\nMetin: {text[:500]}\nKategori:"
     return task_description + examples + test_prompt
 
 
@@ -32,6 +32,7 @@ def evaluate_llm(model_name, train_dataset, test_dataset, text_key, category_key
     # Model ve tokenizer yükleme
     print(f"Model yükleniyor: {model_name}")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.padding_side = "left"
     tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16)
     model.eval()
